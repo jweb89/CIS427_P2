@@ -87,10 +87,10 @@ def process_data(data, connection: socket.socket, user, index):
         return database.lookup_stock(data[1], user)
     elif data[0] == "logout":
         connection.send("200 OK".encode())
-        return None
+        threads.pop(index)
+        sys.exit()
     elif data[0] == "quit":
         connection.send("200 OK".encode())
-
         threads.pop(index)
         sys.exit()
     elif data[0] == "shutdown" and user[3]:
