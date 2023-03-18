@@ -24,6 +24,8 @@ try:
     message = ""
     while message.lower().strip() != 'quit':
         message = input(" -> ")  # take input
+        if not message:
+            continue
         sock.send(message.encode())  # send message
         data = sock.recv(1024).decode()  # receive response
 
