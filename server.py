@@ -86,6 +86,10 @@ def process_data(data, connection: socket.socket, user, index):
 
         return database.lookup_stock(data[1], user)
     elif data[0] == "logout":
+        # Check command
+        if (len(data) != 2 or data[1] != user[0]):
+            return "400 Invalid command format"
+        
         connection.send("200 OK".encode())
         threads.pop(index)
         sys.exit()
