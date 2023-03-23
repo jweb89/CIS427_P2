@@ -66,10 +66,16 @@ def process_data(data, connection: socket.socket, user, index):
     elif data[0] == "list":
         return database.list_stocks(user) if not user[3] else database.list_stocks_root()
     elif data[0] == "balance":
+        # Check command
+        if (len(data) != 1):
+            return "400 Invalid command format"
+        
         return database.get_balance(user[0])
     elif data[0] == "deposit":
         # Check command
         if (len(data) != 2):
+            return "400 Invalid command format"
+        elif not data[1].isdigit():
             return "400 Invalid command format"
 
         return database.deposit(float(data[1]), user)
@@ -90,6 +96,10 @@ def process_data(data, connection: socket.socket, user, index):
         threads.pop(index)
         sys.exit()
     elif data[0] == "quit":
+         # Check command
+        if (len(data) != 1):
+            return "400 Invalid command format"
+        
         connection.send("200 OK".encode())
         threads.pop(index)
         sys.exit()
