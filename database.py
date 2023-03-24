@@ -182,6 +182,10 @@ def list_stocks(user):
 
 
 def deposit(amount, user):
+    try:
+        amount = float(amount)
+    except ValueError:
+        return "400 Invalid amount"
     conn.execute('''UPDATE Users
     SET usd_balance = usd_balance + ?
     WHERE user_id = ?;
