@@ -73,9 +73,7 @@ def process_data(data, connection: socket.socket, user, index):
         return database.get_balance(user[0])
     elif data[0] == "deposit":
         # Check command
-        if (len(data) != 2):
-            return "400 Invalid command format"
-        elif not data[1].isdigit():
+        if (len(data) != 2) or not data[1].isdigit():
             return "400 Invalid command format"
 
         return database.deposit(float(data[1]), user)
