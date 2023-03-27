@@ -9,6 +9,8 @@ import threading
 
 import sys
 
+import select
+
 
 database.init()
 
@@ -22,6 +24,8 @@ sock.bind(server_address)
 
 # Listen for incoming connections
 sock.listen(10)
+
+socks = [sock]
 
 
 threads = []
@@ -69,7 +73,7 @@ def process_data(data, connection: socket.socket, user, index):
         # Check command
         if (len(data) != 1):
             return "400 Invalid command format"
-        
+
         return database.get_balance(user[0])
     elif data[0] == "deposit":
         # Check command
@@ -92,12 +96,12 @@ def process_data(data, connection: socket.socket, user, index):
     elif data[0] == "logout":
         connection.send("200 OK".encode())
         threads.pop(index)
-        sys.exit()
+        return None
     elif data[0] == "quit":
-         # Check command
+        # Check command
         if (len(data) != 1):
             return "400 Invalid command format"
-        
+
         connection.send("200 OK".encode())
         threads.pop(index)
         sys.exit()
@@ -113,48 +117,43 @@ def process_data(data, connection: socket.socket, user, index):
 
 def thread_function(user, connection: socket.socket, index):
     while True:
-        # receive data stream. it won't accept data packet greater than 1024 bytes
         data = connection.recv(1024).decode()
         if not data:
             # if data is not received break
             break
 
         message = process_data(data, connection, user, index)
+        # For logout
+        if message is None:
+            # Exit thread
+            return
 
         connection.send(str(message).encode())
 
 
 while True:
     try:
-        connection, address = sock.accept()  # accept new connection
-        print("Connection from: " + str(address))
 
-        # receive data stream. it won't accept data packet greater than 1024 bytes
-        data = connection.recv(1024).decode()
-        print("Received: " + data)
-        # if not data:
-        #     # if data is not received break
-        #     break
+        readable, writable, exceptionavailable = select.select(socks, [], [])
+        for s in readable:
+            if (s == sock):
+                connection, address = sock.accept()
+                socks.append(connection)
+                print("Connection from: " + str(address))
+            else:
 
-        # For login and quit
-        message, success, user = anonymous_action(data, connection)
+                # receive data stream. it won't accept data packet greater than 1024 bytes
+                data = s.recv(1024).decode()
 
-        while not success:
-            connection.send(str(message).encode())
-            data = connection.recv(1024).decode()
-            if not data:
-                # if data is not received break
-                break
+                # For login and quit
+                message, success, user = anonymous_action(data, s)
+                s.send(str(message).encode())
 
-            message, success, user = anonymous_action(data, connection)
-
-        connection.send(str(message).encode())
-
-        if success:
-            # Create new thread
-            threads.append({"user": user[0], "address": address[0], "thread": threading.Thread(
-                target=thread_function, args=(user, connection, len(threads)))})
-            threads[-1]["thread"].start()
+                if success:
+                    # Create new thread
+                    threads.append({"user": user[0], "address": address[0], "thread": threading.Thread(
+                        target=thread_function, args=(user, s, len(threads)))})
+                    threads[-1]["thread"].start()
     # If socket is closed we should exit
     except:
         exit()
