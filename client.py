@@ -23,16 +23,19 @@ try:
 
     message = ""
     while (True):
-        message = input(" -> ")  # take input
-        sock.send(message.encode())  # send message
-        data = sock.recv(1024).decode()  # receive response
+        try:
+            message = input(" -> ")  # take input
+            sock.send(message.encode())  # send message
+            data = sock.recv(1024).decode()  # receive response
 
-        if not data:
-            # if data is not received break
-            break
+            if not data:
+                # if data is not received break
+                break
 
-        print(data)  # show in terminal
-        if message.lower().strip() in ['quit', 'shutdown']:
+            print(data)  # show in terminal
+            if message.lower().strip() in ['quit', 'shutdown']:
+                break
+        except:
             break
 
 
