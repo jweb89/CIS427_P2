@@ -150,7 +150,7 @@ def login(user_id, password):
     if (user is None):
         return "403 Wrong UserID or Password", False, None
 
-    return "200 ok", True, user
+    return "200 ok", True, user, False
 
 
 def list_stocks_root():

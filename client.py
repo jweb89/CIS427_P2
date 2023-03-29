@@ -22,10 +22,8 @@ sock.connect(server_address)
 try:
 
     message = ""
-    while message.lower().strip() != 'quit':
+    while (True):
         message = input(" -> ")  # take input
-        if not message:
-            continue
         sock.send(message.encode())  # send message
         data = sock.recv(1024).decode()  # receive response
 
@@ -34,6 +32,8 @@ try:
             break
 
         print(data)  # show in terminal
+        if message.lower().strip() in ['quit', 'shutdown']:
+            break
 
 
 finally:

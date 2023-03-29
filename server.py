@@ -30,24 +30,26 @@ socks = [sock]
 
 threads = []
 
+shutdown_requested= False
 
 def anonymous_action(data, connection: socket.socket):
     print("Received: " + data)
     data = data.lower().strip().split(" ")
     if not (data[0].isalpha()):
-        return "400 Invalid command format"
+        return "400 Invalid command format", False, None, False
     if data[0] == "login":
         # Check command
         if (len(data) != 3):
-            return "400 Invalid command format"
+            return "400 Invalid command format", False, None, False
 
         return database.login(data[1], data[2])
     elif data[0] == "quit":
+        if (len(data)!=1):
+            return "400 Invalid command format", False, None, False
         connection.send("200 OK".encode())
-        connection.close()
-        return None
+        return None, False, None, False
     else:
-        return "400 Invalid command", False, None
+        return "400 Invalid command", False, None, False
 
 
 def process_data(data, connection: socket.socket, user, index):
@@ -106,13 +108,20 @@ def process_data(data, connection: socket.socket, user, index):
         threads.pop(index)
         sys.exit()
     elif data[0] == "shutdown" and user[3]:
+        global shutdown_requested
+        shutdown_requested= True
         connection.send("200 OK".encode())
         connection.close()
+        
         sock.close()
+        
         database.close()
-        exit()
+       
+       
+        return None, True #true value is shutdown flag
     else:
         return "400 Invalid command"
+
 
 
 def thread_function(user, connection: socket.socket, index):
@@ -128,32 +137,62 @@ def thread_function(user, connection: socket.socket, index):
             # Exit thread
             return
 
-        connection.send(str(message).encode())
+        try:
+            connection.send(str(message).encode())
+        except OSError as e:
+            #after shutdown os will try to send a message on closed socket
+            #this catches it
+            break
+    connection.close()
 
 
 while True:
     try:
-
+        if shutdown_requested:
+            break
+        socks = [s for s in socks if s.fileno() != -1]
         readable, writable, exceptionavailable = select.select(socks, [], [])
         for s in readable:
+            if shutdown_requested:
+                break
             if (s == sock):
                 connection, address = sock.accept()
                 socks.append(connection)
                 print("Connection from: " + str(address))
             else:
+                try:
+                    # receive data stream. it won't accept data packet greater than 1024 bytes
+                    try:
+                        data = s.recv(1024).decode()
+                    except OSError as e:
+                        socks.remove(s)
+                        s.close()
+                        continue
 
-                # receive data stream. it won't accept data packet greater than 1024 bytes
-                data = s.recv(1024).decode()
+                    # For login and quit
+                    message, success, user, shutdown = anonymous_action(data, s)
 
-                # For login and quit
-                message, success, user = anonymous_action(data, s)
-                s.send(str(message).encode())
+                    if shutdown:
+                        socks.remove(s)
+                        s.close()
+                        break
 
-                if success:
-                    # Create new thread
-                    threads.append({"user": user[0], "address": address[0], "thread": threading.Thread(
-                        target=thread_function, args=(user, s, len(threads)))})
-                    threads[-1]["thread"].start()
-    # If socket is closed we should exit
-    except:
+                    if message is not None:
+                        s.send(str(message).encode())
+
+                    if success:
+                        # Create new thread
+                        threads.append({"user": user[0], "address": address[0], "thread": threading.Thread(
+                            target=thread_function, args=(user, s, len(threads)))})
+                        threads[-1]["thread"].start()
+                    elif message is None:
+                        # If the message is None, it means the client has sent a "quit" command
+                        # So, we need to remove the connection from the socks list and close it
+                        socks.remove(s)
+                        s.close()
+                except ConnectionAbortedError:
+                    socks.remove(s)
+                    s.close()
+    except WindowsError:
+        
         exit()
