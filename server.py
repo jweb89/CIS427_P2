@@ -30,7 +30,8 @@ socks = [sock]
 
 threads = []
 
-shutdown_requested= False
+shutdown_requested = False
+
 
 def anonymous_action(data, connection: socket.socket):
     print("Received: " + data)
@@ -44,7 +45,7 @@ def anonymous_action(data, connection: socket.socket):
 
         return database.login(data[1], data[2])
     elif data[0] == "quit":
-        if (len(data)!=1):
+        if (len(data) != 1):
             return "400 Invalid command format", False, None, False
         connection.send("200 OK".encode())
         return None, False, None, False
@@ -109,39 +110,44 @@ def process_data(data, connection: socket.socket, user, index):
         sys.exit()
     elif data[0] == "shutdown" and user[3]:
         global shutdown_requested
-        shutdown_requested= True
+        shutdown_requested = True
+        global socks
+
         connection.send("200 OK".encode())
-        connection.close()
-        
+        for s in socks:
+            try:
+                s.close()
+            except:
+                pass
         sock.close()
-        
+
         database.close()
-       
-       
-        return None, True #true value is shutdown flag
+        return None, True  # true value is shutdown flag
     else:
         return "400 Invalid command"
 
 
-
 def thread_function(user, connection: socket.socket, index):
     while True:
-        data = connection.recv(1024).decode()
-        if not data:
-            # if data is not received break
-            break
-
-        message = process_data(data, connection, user, index)
-        # For logout
-        if message is None:
-            # Exit thread
-            return
-
         try:
-            connection.send(str(message).encode())
-        except OSError as e:
-            #after shutdown os will try to send a message on closed socket
-            #this catches it
+            data = connection.recv(1024).decode()
+            if not data:
+                # if data is not received break
+                break
+
+            message = process_data(data, connection, user, index)
+            # For logout
+            if message is None:
+                # Exit thread
+                return
+
+            try:
+                connection.send(str(message).encode())
+            except OSError as e:
+                # after shutdown os will try to send a message on closed socket
+                # this catches it
+                break
+        except:
             break
     connection.close()
 
@@ -170,7 +176,8 @@ while True:
                         continue
 
                     # For login and quit
-                    message, success, user, shutdown = anonymous_action(data, s)
+                    message, success, user, shutdown = anonymous_action(
+                        data, s)
 
                     if shutdown:
                         socks.remove(s)
@@ -194,5 +201,5 @@ while True:
                     socks.remove(s)
                     s.close()
     except WindowsError:
-        
+
         exit()

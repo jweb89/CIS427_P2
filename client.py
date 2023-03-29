@@ -19,20 +19,42 @@ server_address = (IP_ADDRESS, 8000)
 print('connecting to %s' % server_address[0])
 sock.connect(server_address)
 
+logged_in_as_root = False  
+
 try:
+
+  
 
     message = ""
     while (True):
-        message = input(" -> ")  # take input
-        sock.send(message.encode())  # send message
-        data = sock.recv(1024).decode()  # receive response
+        try:
+            message = input(" -> ")  # take input
+            if message.lower().strip() == 'login root root01':
+                logged_in_as_root = True
+            if message.lower().strip() == 'logout':
+                logged_in_as_root = False
+             #space will be added to messasge when not root
+             #this causes the command to be invalid and also not trigger 
+             #the loop break for shutdown intended for only root users
+            if message.lower().strip() == 'shutdown' and not logged_in_as_root:
+                message="shutdown "
+                
 
-        if not data:
-            # if data is not received break
-            break
+            sock.send(message.encode())  # send message
+            data = sock.recv(1024).decode()  # receive response
 
-        print(data)  # show in terminal
-        if message.lower().strip() in ['quit', 'shutdown']:
+            if not data:
+                # if data is not received break
+                break
+
+            print(data)  # show in terminal
+            if message.lower().strip() in ['quit']:
+                break
+            if message.lower().strip() in ['shutdown'] and logged_in_as_root:
+                break
+          
+
+        except:
             break
 
 
