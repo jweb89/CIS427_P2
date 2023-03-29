@@ -81,10 +81,6 @@ def process_data(data, connection: socket.socket, user, index):
         # Check command
         if (len(data) != 2) or not data[1].isdigit():
             return "400 Invalid command format"
-        try:
-            amount = float(data[1])
-        except ValueError:
-            return "400 invalid command format"
 
         return database.deposit(float(data[1]), user)
     elif data[0] == "who" and user[3]:
