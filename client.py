@@ -34,6 +34,9 @@ try:
 
             print(data)  # show in terminal
             if message.lower().strip() in ['quit', 'shutdown']:
+                if not data.startswith('200'):
+                    continue
+                    
                 break
         except:
             break
